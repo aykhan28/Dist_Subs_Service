@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+message Subscriber {
+    string name_surname = 1;
+    int64 start_date = 2;
+    int64 last_accessed = 3;
+    repeated string interests = 5;    
+    bool isOnline = 6;                    
+    DemandType demand = 7;
+}
+
+enum DemandType {
+    SUBS = 0;
+    DEL = 1;
+    UPDT = 2;
+    ONLN = 3;
+    OFFL = 4;
+}
