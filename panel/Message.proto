@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+message Message {
+    Demand demand = 1;
+    Response response = 2;
+}
+
+enum Demand {
+    CPCTY = 0;
+    STRT = 1;
+    STOP = 2;
+}
+
+enum Response {
+    YEP = 0;
+    NOP = 1;
+    NULL = 2;
+}
