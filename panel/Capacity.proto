@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+message Capacity {
+    int32 serverX_status = 1;
+    int64 timestamp = 2;
+}
