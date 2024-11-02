@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+message Configuration {
+    int32 fault_tolerance_level = 1;
+
+    enum Method {
+        STRT = 0;
+        STOP = 1;
+    }
+    Method method = 2;
+}
