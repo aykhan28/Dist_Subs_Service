@@ -1,55 +1,87 @@
 require 'socket'
-require 'protobuf'
-require_relative 'Configuration_pb'
-require_relative 'Message_pb'
-require_relative 'Capacity_pb'
+require 'google/protobuf'
+require_relative 'dist_servers_pb'
 
-CONF = "dist_subs.conf"
-SERVER_PORTS = [5001, 5002, 5003]
+class AdminPanel
+  SERVER_PORTS = [5001, 5002, 5003]
+  SERVERS = []
 
-def read_config_file
-  value = 0
-  File.open(CONF, 'r') do |file|
-    file.each_line do |line|
-      arg = line.split('=', 2)
-      value = arg[1].to_i
+  def initialize
+    read_config
+    connect_to_servers
+    start_servers
+    handle_capacity_requests
+  end
+
+  def read_config
+    @config = {}
+    File.foreach('dist_subs.conf') do |line|
+      key, value = line.split('=').map(&:strip)
+      @config[key] = value
     end
   end
-  value
-end
 
-def handle_jserver(recv, value)
-  # Konfiqurasyon
+  def connect_to_servers
+    SERVER_PORTS.each do |port|
+      begin
+        socket = TCPSocket.new('localhost', port)
+        SERVERS << socket
+        puts "Port #{port} ile bağlantı kuruldu"
+      rescue => e
+        puts "Port #{port} ile bağlantı kurulamadı: #{e.message}"
+      end
+    end
+  end
 
-  config_message = Configuration.new(fault_tolerance_level: value, method_type: Configuration::MethodType::STRT)
-  recv.write(config_message.serialize_to_string)
-  puts "Konfigürasyon mesaji gönderildi"
+  def start_servers
+    config = DistServers::Configuration.new(
+      fault_tolerance_level: @config['fault_tolerance_level'].to_i,
+      method: :STRT
+    )
+    send_message_to_all_servers(config)
+  end
 
-  response_data = recv.read
-  response_message = Message.decode(response_data)
-  puts "Alındı: #{response_message.demand}, #{response_message.response}"
+  def handle_capacity_requests
+    loop do
+      sleep 5
+      send_capacity_request
+    end
+  end
 
-  # Kapasite:
+  def send_capacity_request
+    message = DistServers::Message.new(demand: :CPCTY)
+    send_message_to_all_servers(message)
+  end
 
-  capacity_request = Message.new(demand: Message::Demand::CPCTY, response: Message::Response::NULL)
-  recv.write(capacity_request.serialize_to_string)
-  puts "Kapasite sorgusu gönderildi"
+  def send_message_to_all_servers(message)
+    SERVERS.each do |socket|
+      socket.write(message.to_proto)
+      response = DistServers::Message.decode(socket.read)
+      handle_response(response)
+    end
+  end
 
+  def handle_response(response)
+    case response.response
+    when :YEP
+      puts "Yanıt: Evet"
+    when :NOP
+      puts "Yanıt: Hayır"
+    else
+      puts "Bilinmeyen yanıt"
+    end
+  end
 
-  capacity_data = recv.read
-  capacity_message = Capacity.decode(capacity_data)
-  puts "Alındı: #{capacity_message.serverX_status}, #{capacity_message.timestamp}"
-end
-
-fault_tolerance_value = read_config_file
-
-SERVER_PORTS.each do |port|
-  begin
-    socket = TCPSocket.open("localhost", port)
-    puts "Bağlantı kuruldu: #{port}"
-    handle_jserver(socket, fault_tolerance_value)
-    socket.close
-  rescue Errno::ECONNREFUSED
-    puts "Bağlanamadı: #{port}"
+  def close_connections
+    SERVERS.each(&:close)
   end
 end
+
+admin_panel = AdminPanel.new
+
+loop do
+  puts "Çıkmak için 'exit' yazın."
+  break if gets.chomp == 'exit'
+end
+
+admin_panel.close_connections
