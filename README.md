@@ -8,7 +8,7 @@ Derleme ve Çalıştırma aşamaları:
 3. Java dosyalarını çalıştırmak için: ***java -cp ".;com/google/protobuf/protobuf-java-4.28.3.jar" <Server adı>***
 4. Clients klasöründe;
 ***javac -cp ".;com/google/protobuf/protobuf-java-4.28.3.jar" *.java***
-Java dosyalarını çalıştırmak için; ***java -cp ".;com/google/protobuf/protobuf-java-4.28.3.jar" <Client adı>*** (client'ı çalıştırırken Java server'ları çalışır durumda olmalıdır!) 
+ Java dosyalarını çalıştırmak için; ***java -cp ".;com/google/protobuf/protobuf-java-4.28.3.jar" <Client adı>*** (client'ı çalıştırırken Java server'ları çalışır durumda olmalıdır!) 
 
 
 ### plotter.py Solar System Exploration, 1950s – 1960s
