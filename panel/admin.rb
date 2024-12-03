@@ -1,20 +1,19 @@
 require 'socket'
 require 'google/protobuf'
 require_relative 'dist_servers_pb'
-#require_relative 'Capacity_pb'
 
 class AdminPanel
-  SERVER_PORTS = [5001, 5002, 5003]
+  SERVER_PORTS = [6001, 6002, 6003]
   SERVERS = []
-  PLOTTER_SOCKET = nil
 
   def initialize
+    connect_to_plotter
     read_config
     connect_to_servers
-    #connect_to_plotter
     start_servers
     handle_capacity_requests
   end
+
 
   def read_config
     @config = {}
@@ -24,35 +23,30 @@ class AdminPanel
     end
   end
 
-  def connect_to_servers
-    SERVER_PORTS.each do |port|
-      begin
-        socket = TCPSocket.new('localhost', port)
-        SERVERS << socket
-        puts "Port #{port} ile bağlantı kuruldu"
-      rescue => e
-        puts "Port #{port} ile bağlantı kurulamadı: #{e.message}"
-      end
+  def connect_to_plotter
+    begin
+      @plotter_socket = TCPSocket.new('localhost', 6000)
+      puts "Plotter sunucusuna bağlanıldı"
+    rescue => e
+      puts "Plotter sunucusuna bağlantı başarısız: #{e.message}"
+      @plotter_socket = nil
     end
   end
 
-  #def connect_to_plotter
-  #  begin
-  #    @plotter_socket = TCPSocket.new('localhost', 6000)
-  #    puts "Plotter sunucusuna bağlanıldı"
-  #  rescue => e
-  #    puts "Plotter sunucusuna bağlantı başarısız: #{e.message}"
-  #    @plotter_socket = nil
-  #  end
-  #end
-
-  def send_message_to_all_servers(message)
-    socket.puts("ADMIN")
-
-    SERVERS.each do |socket|
-      socket.write(message.to_proto)
-      response = DistServers::Message.decode(socket.read)
-      handle_response(response)
+  def connect_to_servers
+    SERVER_PORTS.each do |port|
+      connected = false
+      until connected
+        begin
+          socket = TCPSocket.new('localhost', port)
+          SERVERS << socket
+          connected = true
+          puts "Port #{port} ile bağlantı kuruldu"
+        rescue => e
+          puts "Port #{port} ile bağlantı başarısız: #{e.message}. Yeniden denenecek..."
+          sleep(2)
+        end
+      end
     end
   end
 
@@ -64,22 +58,60 @@ class AdminPanel
     send_message_to_all_servers(config)
   end
 
-  #def send_capacity_request
-  #  message = DistServers::Message.new(demand: :CPCTY)
-  #  SERVERS.each do |socket|
-  #    socket.write(message.to_proto)
-  #    response = socket.read
-  #    handle_capacity_response(response)
+  def send_message_to_all_servers(message)
+    SERVERS.each do |socket|
+      socket.write(message.to_proto)
+      #response = DistServers::Message.decode(socket.read)
+      #handle_response(response)
+    end
+  end
+
+  # Yanıtları işle
+  #def handle_response(response)
+  #  case response.response
+  #  when :YEP
+  #    puts "Sunucudan yanıt: Başarıyla başlatıldı."
+  #  when :NOP
+  #    puts "Sunucudan yanıt: İşlem başarısız."
+  #  else
+  #    puts "Bilinmeyen yanıt alındı."
   #  end
   #end
 
-  #def handle_capacity_response(response)
-  #  return unless @plotter_socket
-  #  data = DistServers::Capacity.decode(response)
-  #  @plotter_socket.write(data.to_proto)
-  #end
-end
+  def handle_capacity_requests
+    loop do
+      sleep(5)
+      send_capacity_request
+    end
+  end
 
+  def send_capacity_request
+    message = DistServers::Message.new(demand: :CPCTY)
+    SERVERS.each do |socket|
+      begin
+        socket.write(message.to_proto)
+        response = socket.read(1024)
+        next if response.nil? || response.empty?
+  
+        capacity_response = DistServers::Capacity.decode(response)
+        handle_capacity_response(capacity_response)
+      rescue => e
+        puts "Sunucudan kapasite bilgisi alınamadı: #{e.message}"
+      end
+    end
+  end
+  
+  def handle_capacity_response(capacity)
+    puts "Sunucudan gelen kapasite durumu: #{capacity.serverXStatus}, Zaman: #{capacity.timestamp}"
+    if @plotter_socket
+      @plotter_socket.write(capacity.to_proto)
+    end
+  end
+  
+  def close_connections
+    SERVERS.each(&:close)
+  end
+end
 admin_panel = AdminPanel.new
 
 loop do
