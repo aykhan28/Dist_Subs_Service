@@ -6,6 +6,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Server1 {
     private static final int PORT = 5001;
+    private static final int ADMIN_PORT = 6001;
     private static ReentrantLock kilit = new ReentrantLock();
     private static List<SubscriberOuterClass.Subscriber> aboneListesi = new ArrayList<>();
     private static Socket server1Socket;
@@ -13,39 +14,19 @@ public class Server1 {
     private static Socket server3Socket;
 
     public static void main(String[] args) {
-        try (ServerSocket serverSoket = new ServerSocket(PORT)) {
+        try (ServerSocket serverSoket = new ServerSocket(PORT);
+            ServerSocket adminSoket = new ServerSocket(ADMIN_PORT)) {
             System.out.println("Server1 çalışıyor ve bağlantıları bekliyor...");
+
+            Socket adminClient = adminSoket.accept();
+            new Thread(new AdminHandler(adminClient, kilit)).start();
 
             new Thread(new DistributedServerHandler(5002, "Server2", server1Socket, server2Socket, server3Socket)).start();
             new Thread(new DistributedServerHandler(5003, "Server3", server1Socket, server2Socket, server3Socket)).start();
 
             while (true) {
                 Socket clientSoket = serverSoket.accept();
-                kilit.lock();
-                try {
-                    InputStream giris = clientSoket.getInputStream();
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(giris));
-
-                    String clientType = reader.readLine();
-                    System.out.println("Gelen istemci türü: " + clientType);
-
-                    if ("SUBSCRIBER".equalsIgnoreCase(clientType)) {
-                        new Thread(new ClientHandler(clientSoket, aboneListesi, kilit)).start();;
-                    } else if ("ADMIN".equalsIgnoreCase(clientType)) {
-                        new Thread(new AdminHandler(clientSoket, kilit)).start();
-                    } else {
-                        System.out.println("Bilinmeyen istemci türü: " + clientType);
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } finally {
-                    kilit.unlock();
-                    try {
-                        clientSoket.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
+                new Thread(new ClientHandler(clientSoket, aboneListesi, kilit)).start();
             }
         } catch (IOException e) {
             e.printStackTrace();

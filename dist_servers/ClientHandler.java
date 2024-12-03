@@ -21,31 +21,23 @@ public class ClientHandler implements Runnable {
             OutputStream cikis = clientSoket.getOutputStream();
 
             SubscriberOuterClass.Subscriber abone = SubscriberOuterClass.Subscriber.parseFrom(giris);
-            String yanitMesaji;
-
+            
             kilit.lock();
             try {
                 switch (abone.getDemand()) {
                     case SUBS:
                         aboneListesi.add(abone);
                         System.out.println("Yeni abone: ID=" + abone.getID() + ", Ad=" + abone.getNameSurname());
-                        yanitMesaji = "Abonelik başarılı: " + abone.getNameSurname();
                         break;
 
                     case DEL:
                         aboneListesi.removeIf(a -> a.getID() == abone.getID());
                         System.out.println("Abonelik iptali talebi: ID=" + abone.getID());
-                        yanitMesaji = "Abonelik iptal edildi: ID=" + abone.getID();
                         break;
-
-                    default:
-                        yanitMesaji = "Geçersiz talep.";
                 }
             } finally {
                 kilit.unlock();
             }
-
-            cikis.write(yanitMesaji.getBytes());
         } catch (IOException e) {
             e.printStackTrace();
         } finally {

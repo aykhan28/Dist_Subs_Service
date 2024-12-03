@@ -13,39 +13,41 @@ public class AdminHandler implements Runnable {
     }
 
     public void run() {
-        try {
-            InputStream giris = clientSoket.getInputStream();
-            OutputStream cikis = clientSoket.getOutputStream();
+        try (InputStream giris = clientSoket.getInputStream();
+             OutputStream cikis = clientSoket.getOutputStream()) {
 
-            MessageOuterClass.Message mesaj = MessageOuterClass.Message.parseFrom(giris);
-            MessageOuterClass.Message.Builder yanitOlustur = MessageOuterClass.Message.newBuilder()
-                    .setDemand(mesaj.getDemand());
+            while (true) {
+                MessageOuterClass.Message mesaj = MessageOuterClass.Message.parseFrom(giris);
+                MessageOuterClass.Message.Builder yanitOlustur = MessageOuterClass.Message.newBuilder()
+                        .setDemand(mesaj.getDemand());
 
-            kilit.lock();
-            try {
-                switch (mesaj.getDemand()) {
-                    case STRT:
-                        System.out.println("Sunucu başlatıldı.");
-                        yanitOlustur.setResponse(MessageOuterClass.Message.Response.YEP);
-                        break;
+                kilit.lock();
+                try {
+                    switch (mesaj.getDemand()) {
+                        case STRT:
+                            System.out.println("Sunucu başlatıldı.");
+                            yanitOlustur.setResponse(MessageOuterClass.Message.Response.YEP);
+                            break;
 
-                    case CPCTY:
-                        CapacityOuterClass.Capacity kapasite = CapacityOuterClass.Capacity.newBuilder()
-                                .setServerXStatus(1000)
-                                .setTimestamp(System.currentTimeMillis() / 1000L)
-                                .build();
-                        cikis.write(kapasite.toByteArray());
-                        return;
+                        case CPCTY:
+                            CapacityOuterClass.Capacity kapasite = CapacityOuterClass.Capacity.newBuilder()
+                                    .setServerXStatus(1000) // Örnek kapasite
+                                    .setTimestamp(System.currentTimeMillis() / 1000L)
+                                    .build();
+                            cikis.write(kapasite.toByteArray());
+                            cikis.flush();
+                            System.out.println("Kapasite bilgisi gönderildi.");
+                            break;
 
-                    default:
-                        yanitOlustur.setResponse(MessageOuterClass.Message.Response.NOP);
-                        break;
+                        default:
+                            yanitOlustur.setResponse(MessageOuterClass.Message.Response.NOP);
+                            break;
+                    }
+                } finally {
+                    kilit.unlock();
                 }
-            } finally {
-                kilit.unlock();
+                cikis.flush();
             }
-
-            cikis.write(yanitOlustur.build().toByteArray());
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
