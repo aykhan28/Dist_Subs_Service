@@ -52,9 +52,10 @@ Bu belge, projenin işlevselliğini ve kullanılan dosyaların detaylarını aç
 
 ### Çalıştırma Sıralaması
 
-1. **Admin Panelini** (admin.rb) çalıştırın. Admin paneli, sunuculara bağlanmaya çalışır ve bağlanana kadar düzenli aralıklarla bağlantı isteği gönderir.
-2. **Java Server** dosyalarını başlatın.
-3. İstemcilerle bağlantı kurmak için **Client** dosyalarını çalıştırın.
+1. plotter.py dosyasını çalıştırın.
+2. **Admin Panelini** (admin.rb) çalıştırın. Admin paneli, sunuculara bağlanmaya çalışır ve bağlanana kadar düzenli aralıklarla bağlantı isteği gönderir.
+3. **Java Server** dosyalarını başlatın.
+4. İstemcilerle bağlantı kurmak için **Client** dosyalarını çalıştırın.
 
 ## Dosyaların Açıklamaları
 
@@ -161,5 +162,3 @@ Bu belge, projenin işlevselliğini ve kullanılan dosyaların detaylarını aç
 ### Plotter.py
 - Python tabanlı sunucu olan Plotter, Admin istemcisinden kapasite bilgilerini alarak grafik oluşturur. Ancak, yanıt iletimiyle ilgili sorunlar nedeniyle entegrasyonu tamamlanmamıştır.
 
-### AdminHandler.java veya admin.rb
-- CPCTY isteği doğru gönderilip alınamıyor
