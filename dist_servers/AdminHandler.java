@@ -16,9 +16,7 @@ public class AdminHandler implements Runnable {
         try (InputStream inputStream = adminSocket.getInputStream();
              OutputStream outputStream = adminSocket.getOutputStream()) {
 
-            // Sürekli gelen talepleri dinle
             while (true) {
-                // Gelen mesajı Protobuf formatında çöz
                 MessageOuterClass.Message request = MessageOuterClass.Message.parseFrom(inputStream);
                 if (request == null) {
                     System.out.println("Boş mesaj alındı. Bağlantı kapatılıyor...");
@@ -26,32 +24,27 @@ public class AdminHandler implements Runnable {
                 }
 
                 System.out.println("Admin'den gelen talep: " + request.getDemand());
-
-                // Yanıt hazırlayıcı
                 MessageOuterClass.Message.Builder responseBuilder = MessageOuterClass.Message.newBuilder()
                         .setDemand(request.getDemand());
 
-                // Talebi işle
                 lock.lock();
                 try {
                     switch (request.getDemand()) {
-                        case STRT: // Başlatma talebi
+                        case STRT:
                             System.out.println("Sunucu başlatıldı.");
                             responseBuilder.setResponse(MessageOuterClass.Message.Response.YEP);
                             break;
 
-                        case CPCTY: // Kapasite bilgisi talebi
+                        case CPCTY:
                             CapacityOuterClass.Capacity capacity = CapacityOuterClass.Capacity.newBuilder()
-                                    .setServerXStatus(1000) // Örnek kapasite
+                                    .setServerXStatus(1000)
                                     .setTimestamp(System.currentTimeMillis() / 1000L)
                                     .build();
                             System.out.println("Kapasite bilgisi gönderiliyor: " + capacity);
-                            // Kapasite bilgisi döner
-                            capacity.writeDelimitedTo(outputStream);
+                            capacity.writeTo(outputStream);
                             outputStream.flush();
-                            continue; // Bir sonraki mesajı beklemek için döngüye geç
-                        
-                        default: // Geçersiz talep
+                            continue;
+                        default:
                             System.out.println("Geçersiz talep alındı.");
                             responseBuilder.setResponse(MessageOuterClass.Message.Response.NOP);
                             break;
@@ -60,14 +53,11 @@ public class AdminHandler implements Runnable {
                     lock.unlock();
                 }
 
-                // Yanıtı gönder
-                responseBuilder.build().writeDelimitedTo(outputStream);
+                responseBuilder.build().writeTo(outputStream);
                 outputStream.flush();
             }
-
         } catch (IOException e) {
             System.err.println("AdminHandler bağlantı hatası: " + e.getMessage());
-            e.printStackTrace();
         } finally {
             try {
                 adminSocket.close();
