@@ -4,16 +4,16 @@ require_relative 'dist_servers_pb'
 
 class AdminPanel
   SERVER_PORTS = [6001, 6002, 6003]
-  SERVERS = []
-  @plotter_socket = nil
 
   def initialize
     @config = read_config
-    @server_mutex = Mutex.new
+    @server_sockets = {}
+    @plotter_socket = nil
+
     connect_to_plotter
     connect_to_servers
-    start_servers_thread
-    capacity_request_thread
+    start_servers
+    perform_capacity_checks
   end
 
   # Konfigürasyon dosyasını oku
@@ -28,114 +28,115 @@ class AdminPanel
 
   # Plotter'a bağlan
   def connect_to_plotter
-    Thread.new do
-      begin
-        @plotter_socket = TCPSocket.new('localhost', 6000)
-        puts "Plotter sunucusuna bağlanıldı"
-      rescue => e
-        puts "Plotter sunucusuna bağlantı başarısız: #{e.message}"
-      end
+    begin
+      @plotter_socket = TCPSocket.new('localhost', 6000)
+      puts "Plotter sunucusuna bağlanıldı"
+    rescue => e
+      puts "Plotter sunucusuna bağlantı başarısız: #{e.message}"
     end
   end
 
   # Sunuculara bağlan
   def connect_to_servers
     SERVER_PORTS.each do |port|
-      Thread.new do
-        connected = false
-        until connected
-          begin
-            socket = TCPSocket.new('localhost', port)
-            @server_mutex.synchronize { SERVERS << socket }
-            connected = true
-            puts "Port #{port} ile bağlantı kuruldu"
-          rescue => e
-            puts "Port #{port} ile bağlantı başarısız: #{e.message}. Yeniden denenecek..."
-            sleep(2)
-          end
+      connected = false
+      until connected
+        begin
+          socket = TCPSocket.new('localhost', port)
+          @server_sockets[port] = socket
+          connected = true
+          puts "Port #{port} ile bağlantı kuruldu"
+        rescue => e
+          puts "Port #{port} ile bağlantı başarısız: #{e.message}. Yeniden denenecek..."
+          sleep(2)
         end
-      end.join # Sunucular sırayla bağlanmalı
-    end
-  end
-
-  # Sunucuları başlatan thread
-  def start_servers_thread
-    Thread.new do
-      config = DistServers::Configuration.new(
-        fault_tolerance_level: @config['fault_tolerance_level'].to_i,
-        method: :STRT
-      )
-      send_message_to_all_servers(config)
-    end
-  end
-
-  # Kapasite sorgularını düzenli aralıklarla gönderen thread
-  def capacity_request_thread
-    Thread.new do
-      loop do
-        sleep(5)
-        send_capacity_request
       end
     end
   end
 
-  # Tüm sunuculara mesaj gönder
-  def send_message_to_all_servers(message)
-    SERVERS.each do |socket|
+  # Sunucuları başlat
+  def start_servers
+    config = DistServers::Message.new(demand: :STRT)
+    @server_sockets.each do |port, socket|
       begin
-        socket.write(message.to_proto)
+        socket.write(config.to_proto)
+        puts "Gönderildi.."
         response = DistServers::Message.decode(socket.read(1024))
-        handle_response(response)
+        puts "Alındı.."
+        handle_response(port, response)
       rescue => e
-        puts "Mesaj gönderimi sırasında hata oluştu: #{e.message}"
+        puts "Port #{port} için başlatma hatası: #{e.message}"
       end
     end
   end
 
-  # Yanıtları işleyen metot
-  def handle_response(response)
-    case response.response
-    when :YEP
-      puts "Sunucudan yanıt: Başarıyla başlatıldı."
-    when :NOP
-      puts "Sunucudan yanıt: İşlem başarısız."
-    else
-      puts "Bilinmeyen yanıt alındı."
+  # Kapasite sorgularını yap ve Plotter'a gönder
+  def perform_capacity_checks
+    loop do
+      sleep(5)
+      send_capacity_requests
+      sleep(1)
+      send_capacity_to_plotter
     end
-  end
+  end  
 
-  # Kapasite sorgusu gönder
-  def send_capacity_request
+  # Kapasite sorguları gönder ve yanıtları işle
+  def send_capacity_requests
     message = DistServers::Message.new(demand: :CPCTY)
-    SERVERS.each do |socket|
+    @server_sockets.each do |port, socket|
       begin
         socket.write(message.to_proto)
         response = socket.read(1024)
         next if response.nil? || response.empty?
 
         capacity_response = DistServers::Capacity.decode(response)
-        handle_capacity_response(capacity_response)
+        puts "Port #{port}: Kapasite Durumu: #{capacity_response.serverXStatus}, Zaman: #{capacity_response.timestamp}"
       rescue => e
-        puts "Sunucudan kapasite bilgisi alınamadı: #{e.message}"
+        puts "Port #{port} için kapasite sorgusu hatası: #{e.message}"
       end
     end
   end
 
-  # Gelen kapasite yanıtını işle
-  def handle_capacity_response(capacity)
-    puts "Sunucudan gelen kapasite durumu: #{capacity.serverXStatus}, Zaman: #{capacity.timestamp}"
-    if @plotter_socket
-      @plotter_socket.write(capacity.to_proto)
+  # Kapasite bilgilerini Plotter'a gönder
+  def send_capacity_to_plotter
+    return unless @plotter_socket
+
+    @server_sockets.each do |port, socket|
+      begin
+        message = DistServers::Message.new(demand: :CPCTY)
+        socket.write(message.to_proto)
+        response = socket.read(1024)
+        next if response.nil? || response.empty?
+
+        capacity_response = DistServers::Capacity.decode(response)
+        @plotter_socket.write(capacity_response.to_proto)
+        puts "Port #{port}: Kapasite bilgisi Plotter'a gönderildi"
+      rescue => e
+        puts "Port #{port} için Plotter'a veri gönderim hatası: #{e.message}"
+      end
+    end
+  end
+
+  # Yanıtları işleme metodu
+  def handle_response(port, response)
+    case response.response
+    when :YEP
+      puts "Port #{port}: Sunucu başarıyla başlatıldı."
+    when :NOP
+      puts "Port #{port}: Sunucu başlatılamadı."
+    else
+      puts "Port #{port}: Bilinmeyen yanıt alındı."
     end
   end
 
   # Bağlantıları kapat
   def close_connections
-    SERVERS.each(&:close)
+    @server_sockets.each_value(&:close)
     @plotter_socket&.close
   end
 end
 
+# AdminPanel başlat
 admin_panel = AdminPanel.new
 
 loop do
