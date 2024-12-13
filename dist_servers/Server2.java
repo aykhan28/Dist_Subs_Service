@@ -19,7 +19,7 @@ public class Server2 {
             System.out.println("Server2 çalışıyor ve bağlantıları bekliyor...");
 
             Socket adminClient = adminSoket.accept();
-            new Thread(new AdminHandler(adminClient, kilit)).start();
+            new Thread(new AdminHandler(adminClient)).start();
 
             new Thread(new DistributedServerHandler(5001, "Server1", server1Socket, server2Socket, server3Socket)).start();
             new Thread(new DistributedServerHandler(5003, "Server3", server1Socket, server2Socket, server3Socket)).start();
