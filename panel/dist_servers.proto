@@ -2,43 +2,7 @@ syntax = "proto3";
 
 package dist_servers;
 
-message Message {
-    enum Demand {
-        STRT = 0;
-        CPCTY = 1;
-    }
-
-    Demand demand = 1;
-    Response response = 2;
-
-    enum Response {
-        YEP = 0;
-        NOP = 1;
-    }
-}
-
 message Capacity {
-    int32 serverXStatus = 1;
-    int64 timestamp = 2;
-}
-
-message Configuration {
-    int32 fault_tolerance_level = 1;
-
-    enum Method {
-        STRT = 0;
-        STOP = 1;
-    }
-    Method method = 2;
-}
-
-message Subscriber {
-    enum Demand {
-        SUBS = 0;
-        DEL = 1;
-    }
-
-    Demand demand = 1;
-    string nameSurname = 2;
-    string id = 3;
+    int32 subscriber_count = 1;
+    int32 server_port= 2;
 }

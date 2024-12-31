@@ -1,6 +1,6 @@
 syntax = "proto3";
 
 message Capacity {
-    int32 serverXStatus = 1;
-    int64 timestamp = 2;
+    int32 subscriber_count = 1;
+    int32 server_port= 2;
 }
