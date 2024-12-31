@@ -1,8 +1,5 @@
 import java.io.*;
 import java.net.*;
-import java.util.concurrent.locks.ReentrantLock;
-
-import com.google.protobuf.*;
 
 public class AdminHandler implements Runnable {
     private Socket adminSocket;
@@ -12,49 +9,27 @@ public class AdminHandler implements Runnable {
     }
 
     public void run() {
-        try (InputStream inputStream = adminSocket.getInputStream();
-             OutputStream outputStream = adminSocket.getOutputStream()) {
-
-            // İlk mesajı oku (STRT)
-            MessageOuterClass.Message request = MessageOuterClass.Message.parseFrom(inputStream);
-            if (request == null || request.getDemand() != MessageOuterClass.Message.Demand.STRT) {
-                System.out.println("Geçersiz başlangıç talebi alındı. Bağlantı kapatılıyor...");
-                return;
-            }
-
-            System.out.println("Sunucu başlatılıyor...");
-            MessageOuterClass.Message.Builder responseBuilder = MessageOuterClass.Message.newBuilder()
-                    .setDemand(request.getDemand())
-                    .setResponse(MessageOuterClass.Message.Response.YEP);
-
-            responseBuilder.build().writeTo(outputStream);
-            outputStream.flush();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(adminSocket.getInputStream()));
+            PrintWriter writer = new PrintWriter(adminSocket.getOutputStream(), true)) {
+            
+            System.out.println("Admin istemcisi bağlı.");
 
             while (true) {
-                request = MessageOuterClass.Message.parseFrom(inputStream);
-                if (request == null || request.getDemand() != MessageOuterClass.Message.Demand.CPCTY) {
-                    System.out.println("Geçersiz kapasite talebi alındı. Bağlantı kapatılıyor...");
-                    return;
+                String incomingMessage = reader.readLine();
+                if (incomingMessage == null || incomingMessage.equalsIgnoreCase("exit")) {
+                    System.out.println("Admin istemcisi bağlantıyı kapattı.");
+                    break;
                 }
-
-                CapacityOuterClass.Capacity capacity = CapacityOuterClass.Capacity.newBuilder()
-                        .setServerXStatus(1000)
-                        .setTimestamp(System.currentTimeMillis() / 1000L)
-                        .build();
-                System.out.println("Kapasite bilgisi gönderiliyor: " + capacity);
-
-                capacity.writeTo(outputStream);
-                outputStream.flush();
+                System.out.println("Admin'den mesaj alındı: " + incomingMessage);
             }
 
         } catch (IOException e) {
-            System.err.println("AdminHandler bağlantı hatası: " + e.getMessage());
+            e.printStackTrace();
         } finally {
             try {
                 adminSocket.close();
-                System.out.println("Admin bağlantısı kapatıldı.");
             } catch (IOException e) {
-                System.err.println("Admin bağlantısı kapatılamadı: " + e.getMessage());
+                e.printStackTrace();
             }
         }
     }
