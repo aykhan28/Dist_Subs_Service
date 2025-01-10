@@ -1,48 +1,94 @@
-import java.io.*;
-import java.net.*;
+package Clients;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.Socket;
+import java.util.Arrays;
 import java.util.Scanner;
 
-import com.google.protobuf.*;
+import com.protos.DemandType;
+import com.protos.Subscriber;
 
 public class Client4 {
-    private static final String SERVER_HOST = "localhost";
-    private static final int SERVER_PORT = 5001;
+
+    private static final String HOST = "localhost";
+    private static final int[] PORTS = {5001, 5002, 5003};
+    private Socket socket;
+    private int Id = 2;
+    private String nameSurname = "Derya";
+    private String demand;
+    private String[] AllInterests = {"sports", "technology"};
+    private int serverNo = 1;
+
+    public Client4 connectToServer() throws IOException {
+        socket = new Socket(HOST, PORTS[serverNo - 1]);
+        System.out.println("Sunucu" + serverNo + "'ye başarıyla bağlanıldı...");
+        return this;
+    }
+
+    public void sendSubscriptionRequest() throws IOException {
+        Subscriber subscriber = createSubscriptionMessage();
+        transmitMessage(subscriber);
+        System.out.println("Abone bilgisi sunucuya gönderildi:\n" + subscriber);
+    }
+
+    private Subscriber createSubscriptionMessage() {
+        return Subscriber.newBuilder()
+                .setNameSurname(nameSurname)
+                .setStartDate(System.currentTimeMillis())
+                .setLastAccessed(System.currentTimeMillis())
+                .addAllInterests(Arrays.asList(AllInterests))
+                .setIsOnline(true)
+                .setDemand(convertDemandType(demand))
+                .setID(Id)
+                .build();
+    }
+
+    private DemandType convertDemandType(String demand) {
+        switch (demand) {
+            case "SUB":
+                return DemandType.SUBS;
+            case "DEL":
+                return DemandType.DEL;
+            default:
+                throw new IllegalArgumentException("Geçersiz istek");
+        }
+    }
+
+    private void transmitMessage(Subscriber subscriber) throws IOException {
+        DataOutputStream output = new DataOutputStream(socket.getOutputStream());
+        byte[] responseBytes = subscriber.toByteArray();
+        output.writeInt(responseBytes.length);
+        output.write(responseBytes);
+        output.flush();
+    }
 
     public static void main(String[] args) {
-        try (Socket socket = new Socket(SERVER_HOST, SERVER_PORT)) {
-            System.out.println("Sunucuya bağlandı: " + SERVER_HOST + ":" + SERVER_PORT);
-            InputStream input = socket.getInputStream();
-            OutputStream output = socket.getOutputStream();
+        Scanner scanner = new Scanner(System.in);
 
-            System.out.println("Abone ol (A), Aboneliği iptal et (B):");
-            Scanner getuserInput = new Scanner(System.in);
-            String userInput = getuserInput.nextLine();
-            
-            if (userInput.equals("A")) {
-                SubscriberOuterClass.Subscriber subscriber = SubscriberOuterClass.Subscriber.newBuilder()
-                        .setID(2)
-                        .setNameSurname("Derya")
-                        .setStartDate(System.currentTimeMillis() / 1000L)
-                        .setLastAccessed(System.currentTimeMillis() / 1000L)
-                        .addInterests("sports")
-                        .addInterests("technology")
-                        .setIsOnline(true)
-                        .setDemand(SubscriberOuterClass.Subscriber.Demand.SUBS)
-                        .build();
-                subscriber.writeTo(output);
-                output.flush();
-                System.out.println("Abone olma talebi gönderildi: " + subscriber);
-            } else if (userInput.equals("B")) {
-                SubscriberOuterClass.Subscriber unsubscribeRequest = SubscriberOuterClass.Subscriber.newBuilder()
-                        .setID(2)
-                        .setDemand(SubscriberOuterClass.Subscriber.Demand.DEL)
-                        .build();
-                output.write(unsubscribeRequest.toByteArray());
-                System.out.println("Abonelik iptal talebi gönderildi: " + unsubscribeRequest);
-            }
+        System.out.println("Abone ol (A), Aboneliği iptal et (B):");
+        String userInput = scanner.nextLine().toUpperCase();
+
+        Client4 client = new Client4();
+
+        if (userInput.equals("A")) {
+            client.demand = "SUB";
+        } else if (userInput.equals("B")) {
+            client.demand = "DEL";
+        } else {
+            System.out.println("Geçersiz giriş. Lütfen 'A' veya 'B' girin.");
+            scanner.close();
+            return;
+        }
+
+        try {
+            client.connectToServer();
+            client.sendSubscriptionRequest();
         } catch (IOException e) {
-            System.out.println("Sunucuya bağlanılamadı: " + SERVER_HOST + ":" + SERVER_PORT);
+            System.err.println("Sunucuya bağlanırken bir hata oluştu.");
             e.printStackTrace();
         }
+
+        scanner.close();
     }
 }
