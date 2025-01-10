@@ -2,7 +2,7 @@
 # Dağıtık Abonelik Sistemi
 
 ## Proje Tanımı
-Bu proje, Java, Python ve Ruby kullanarak geliştirilen, dağıtık ve hata toleranslı bir abonelik sistemidir. Sistemde farklı bileşenler işbirliği yaparak veri paylaşımı ve yönetimi sağlar.
+Bu proje, Java, Python, Ruby ve Protobuf kullanarak geliştirilen, dağıtık ve hata toleranslı bir abonelik sistemidir. Sistemde farklı bileşenler işbirliği yaparak veri paylaşımı, yönetimi ve görselleştirmesi sağlar.
 
 ## İçerik
 - [En Son Güncellemeler](#en-son-güncellemeler)
@@ -104,3 +104,4 @@ Bu proje, Java, Python ve Ruby kullanarak geliştirilen, dağıtık ve hata tole
 4. Elgun Heydarov
 
 ## Sunum Videosu
+- [Video Linki](https://youtu.be/F0jh7TiNovg)
