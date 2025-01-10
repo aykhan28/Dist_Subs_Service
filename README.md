@@ -13,8 +13,7 @@ Bu proje, Java, Python ve Ruby kullanarak geliştirilen, dağıtık ve hata tole
 - [4. admin.rb](#4-adminrb)
 - [5. Protobuf Tanımları](#5-protobuf-tanımları)
 - [Mimari](#mimari)
-- [Başlatma Adımları](#başlatma-adımları)
-- [Ekip Üyeleri](#ekip-üyeleri)
+- [Ekip Üyeleri](#ekip-uyeleri)
 - [Sunum Videosu](#sunum-videosu)
 
 ## En Son Güncellemeler
@@ -90,9 +89,7 @@ Bu proje, Java, Python ve Ruby kullanarak geliştirilen, dağıtık ve hata tole
 ---
 
 ## Mimari
-<img src="Mimariler/yeni_mimari.png.png" alt="" width="400"/>
-
----
+![Sistem Mimarisi](Mimariler/yeni_mimari.png)
 
 
 **Başlatma Adımları:**
@@ -100,14 +97,10 @@ Bu proje, Java, Python ve Ruby kullanarak geliştirilen, dağıtık ve hata tole
 2. Admin panelini çalıştırın.
 3. İstemciler üzerinden işlem gerçekleştirin.
 
----
-
-**Ekip Üyeleri:**
+## Ekip Uyeleri
 1. Aykhan Shirinzade
 2. Beyzanur Dere
 3. Pınar Güzel
 4. Elgun Heydarov
-
----
 
 ## Sunum Videosu
