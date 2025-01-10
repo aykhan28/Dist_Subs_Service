@@ -1,6 +1,13 @@
 syntax = "proto3";
 
+package dist_servers;
+
+option java_multiple_files = true;
+option java_package = "com.protos";
+option java_outer_classname = "CapacityJava";
+
 message Capacity {
-    int32 subscriber_count = 1;
-    int32 server_port= 2;
+    int32 server_id = 1;
+    int32 serverX_status = 2;
+    int64 timestamp = 3;
 }

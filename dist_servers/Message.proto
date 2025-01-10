@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package dist_servers;
+
+option java_multiple_files = true;
+option java_package = "com.protos";
+option java_outer_classname = "MessageJava";
+
+message Message {
+    Demand demand = 1;
+    Response response = 2;
+}
+
+enum Demand {
+    CPCTY = 0;
+    STRT = 1;
+}
+
+enum Response {
+    YEP = 0;
+    NOP = 1;
+}

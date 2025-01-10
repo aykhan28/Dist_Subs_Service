@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dist_servers;
+
+option java_multiple_files = true;
+option java_package = "com.protos";
+option java_outer_classname = "ConfigurationJava";
+
+message Configuration {
+    int32 fault_tolerance_level = 1;
+    MethodType method_type = 2;
+}
+
+enum MethodType {
+    STRT = 0;
+    STOP = 1;
+}
