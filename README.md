@@ -1,164 +1,113 @@
-# Dağıtık Abonelik Sistemi (Distributed Subscriber Service)
-Bu belge, projenin işlevselliğini ve kullanılan dosyaların detaylarını açıklamaktadır.
 
-## Derleme ve Çalıştırma Aşamaları
+# Dağıtık Abonelik Sistemi
 
-### Protobuf Derleme
+## Proje Tanımı
+Bu proje, Java, Python ve Ruby kullanarak geliştirilen, dağıtık ve hata toleranslı bir abonelik sistemidir. Sistemde farklı bileşenler işbirliği yaparak veri paylaşımı ve yönetimi sağlar.
 
-- **dist_servers** klasöründe:
+## İçerik
+- [En Son Güncellemeler](#en-son-güncellemeler)
+- [Eksikler](#eksikler)
+- [1. ServerX.java](#1-serverxjava)
+- [2. plotter.py](#2-plotterpy)
+- [3. ClientX.java / MyClient.java](#3-clientxjava--myclientjava)
+- [4. admin.rb](#4-adminrb)
+- [5. Protobuf Tanımları](#5-protobuf-tanımları)
+- [Mimari](#mimari)
+- [Başlatma Adımları](#başlatma-adımları)
+- [Ekip Üyeleri](#ekip-üyeleri)
+- [Sunum Videosu](#sunum-videosu)
 
-  ```bash
-  protoc --java_out=. <Proto Dosya İsmi>.proto
-  ```
+## En Son Güncellemeler
+- Merkezi sistem kaldırıldı.
+- Hata tolerans ayarlaması yapıldı.
+- Protoların ve java protobuf kütüphanesinin dizin yapısı düzenlendi.
+- Protolar düzenlenerek fazla portlar silindi (mimari çizimlerine bakabilirsiniz).
 
-- **panel** klasöründe:
+## Eksikler
+- Java Server'ları eskisi gibi AdminHandler, ClientHandler ve DistributedServerHandler diye sınıflara bölünmedi. (Ödev teslim tarihine yetişmedi)
+- Java Protobuf kütüphanesi Maven veya Gradle kullanmak yerine manuel olarak eklenmesi.
+- Sadece SUBS ve DEL işlemleri var. Diğer işlemler yapılamıyor.
+- Videoda sadece kodlar koşturuldu. Meet görüşmesi yapamadık.
 
-  ```bash
-  protoc --ruby_out=. <Proto Dosya İsmi>.proto
-  ```
+---
 
-### Java Dosyalarını Derleme
+## 1. ServerX.java
+**Özellikler:**
+- TCP soketleri ile bağlantı.
+- `SUBS` ve `DEL` taleplerini işleme.
+- Protobuf formatında veri iletimi.
+- Thread-safe yapı.
+- Admin'den gelen komutlarla hata toleransı yönetimi.
+- Kapasite bilgisi gönderimi.
+- Hata tolerans seviyesine göre yedekleme yapar.
 
-- **dist_servers** klasöründe:
+## 2. plotter.py
+**Özellikler:**
+- Gerçek zamanlı kapasite takibi.
+- Protobuf formatında veri iletimi.
+- Dinamik çizgi grafikleri.
+- Threading.
 
-  ```bash
-  javac -cp ".;com/google/protobuf/protobuf-java-4.28.3.jar" *.java
-  ```
+## 3. ClientX.java / MyClient.java
+**Özellikler:**
+- TCP bağlantısı.
+- Protobuf formatında veri iletimi.
+- Kullanıcı etkileşimiyle ID ve talep türü seçimi.
 
-### Java Dosyalarını Çalıştırma
+## 4. admin.rb
+**Özellikler:**
+- `dist_subs.conf` üzerinden hata tolerans seviyesini okur.
+- Protobuf formatında veri iletimi.
+- Java ve Python sunucularına bağlantı kurar.
+- `STRT` komutunu göndererek sunucuları başlatır.
+- Kapasite takibi ve aktarımı.
 
-- **dist_servers** klasöründe:
+**Genel Akış:**
+1. Konfigürasyon okunur.
+2. Bağlantılar kurulur.
+3. Sunucular başlatılır.
+4. Kapasite sorgulanır ve gönderilir.
+5. Kapasite bilgileri çizdirilir.
 
-  ```bash
-  java -cp ".;com/google/protobuf/protobuf-java-4.28.3.jar" <Server adı>
-  ```
-
-### Ruby Admin Panelini Çalıştırma
-
-- **panel** klasöründe:
-
-  ```bash
-  ruby admin.rb
-  ```
-
-### Java Client Çalıştırma
-
-- **Clients** klasöründe:
-
-  ```bash
-  javac -cp ".;com/google/protobuf/protobuf-java-4.28.3.jar" <Client adı>.java
-  java -cp ".;com/google/protobuf/protobuf-java-4.28.3.jar" <Client adı>
-  ```
-
-### Çalıştırma Sıralaması
-
-1. plotter.py dosyasını çalıştırın.
-2. **Admin Panelini** (admin.rb) çalıştırın. Admin paneli, sunuculara bağlanmaya çalışır ve bağlanana kadar düzenli aralıklarla bağlantı isteği gönderir.
-3. **Java Server** dosyalarını başlatın.
-4. İstemcilerle bağlantı kurmak için **Client** dosyalarını çalıştırın.
-
-## Dosyaların Açıklamaları
-
-### Server Dosyaları (Server1, Server2, Server3)
-
-- **Amaç:** Sunucular, Subscriber istemcilerden gelen talepleri işlemek, Admin istemcisinden gelen yönetim taleplerini yerine getirmek ve diğer sunucularla iletişim kurarak dağıtık bir sistem oluşturmak için geliştirilmiştir.
-- **Bağlantı Yönetimi:** 
-  - Admin istemcilerle iletişim için portlar: 6001, 6002, 6003.
-  - Subscriber istemciler ve diğer sunucularla iletişim için ayrı portlar kullanılır.
-- **İşlevler:** 
-  - Admin Komutları:
-    - `STRT`: Sunucuyu başlatır.
-    - `CPCTY`: Kapasite durumunu döner.
-  - Subscriber Komutları:
-    - `SUBS`: Abone ekler.
-    - `DEL`: Abone siler.
-- **Protobuf Kullanımı:** 
-  - `Message.proto`: Admin komutları ve yanıtları için kullanılır.
-  - `Subscriber.proto`: Subscriber taleplerini işler.
-  - `Capacity.proto`: Kapasite bilgilerini döner.
-
-### DistributedServerHandler.java
-
-- **Amaç:** Sunucular arasında bağlantı kurmayı ve bu bağlantıları yönetmeyi sağlar.
-- **İşlevler:** 
-  - Her sunucu, diğer iki sunucuya TCP bağlantısı kurar.
-  - Bağlantılar kesildiğinde, yeniden bağlanmayı dener.
-- **Teknik Özellikler:** 
-  - Bağlantılar sürekli kontrol edilir ve açık tutulur.
-  - Sunucular arasında 6 bağlantı kurulur.
-
-### ClientHandler.java
-
-- **Amaç:** Subscriber istemcilerden gelen talepleri işler.
-- **İşlevler:** 
-  - `SUBS`: Yeni abone ekler.
-  - `DEL`: Abonelik iptali taleplerini işler.
-  - Subscriber istemcilere geri bildirim mesajı gönderir.
-
-### AdminHandler.java
-
-- **Amaç:** Admin istemcilerden gelen komutları işler.
-- **İşlevler:** 
-  - `STRT`: Sunucuyu başlatır.
-  - `CPCTY`: Kapasite bilgilerini döner.
-- **Teknik Detaylar:** 
-  - Admin istemcisi, sunucuların kapasite bilgilerini düzenli aralıklarla sorgular.
-
-### Client.java
-
-- **Amaç:** Subscriber istemciler için sunucuya bağlanma, abone olma ve abonelik iptali işlemlerini sağlar.
-- **İşlevler:** 
-  - `SUBS`: Abonelik talebi gönderir.
-  - `DEL`: Abonelik iptal talebi gönderir.
-- **Protobuf Kullanımı:** 
-  - Talepler, `Subscriber.proto` kullanılarak Protobuf formatında gönderilir.
-
-### Admin.rb
-
-- **Amaç:** Admin istemcisi olarak, sunuculara yönetim komutları göndermek ve yanıtları işlemek için geliştirilmiştir.
-- **İşlevler:** 
-  - `STRT`: Tüm sunucuları başlatır.
-  - `CPCTY`: Kapasite bilgilerini sorgular ve Plotter sunucusuna gönderir.
-- **Teknik Özellikler:** 
-  - Bağlantı Yenileme: Admin.rb, sunuculara bağlanmak için düzenli aralıklarla deneme yapar.
-  - Kapasite Bilgileri: Sunuculardan gelen kapasite bilgilerini işler.
-
-## Proto Dosyaları
-
-### Capacity.proto
-
-- **Amaç:** Kapasite bilgilerini taşır.
-- **Alanlar:** 
-  - `serverXStatus`: Sunucunun kapasite durumu (%).
-  - `timestamp`: Kapasite bilgisinin alındığı UNIX zaman damgası.
-
-### Configuration.proto
-
-- **Amaç:** Sunucu konfigürasyon ayarlarını taşır.
-- **Alanlar:** 
-  - `fault_tolerance_level`: Hata tolerans seviyesini belirtir.
-  - `method`: Yönetim yöntemi.
+## 5. Protobuf Tanımları
 
 ### Message.proto
-
-- **Amaç:** Admin komutlarını taşır.
-- **Alanlar:** 
-  - `demand`: Komut türü.
-  - `response`: Sunucunun yanıt durumu.
+- **Message:** `demand` ve `response` bilgilerini taşır.
+- **Demand Enum:** `CPCTY` (kapasite sorgusu), `STRT` (başlatma komutu).
+- **Response Enum:** `YEP` (başarılı), `NOP` (başarısız).
 
 ### Subscriber.proto
+- **Subscriber:** Kullanıcı bilgilerini ve taleplerini içerir.
+- **DemandType Enum:** `SUBS`, `DEL`, `UPDT`, `ONLN`, `OFFL`.
 
-- **Amaç:** Subscriber istemci taleplerini tanımlar.
-- **Alanlar:** 
-  - `ID`: Abone kimlik numarası.
-  - `name_surname`: Abonenin adı.
-  - `start_date`: Kayıt tarihi.
-  - `last_accessed`: Son erişim tarihi.
-  - `interests`: İlgi alanları.
-  - `isOnline`: Çevrimiçi durumu.
+### Capacity.proto
+- **Capacity:** Sunucu kapasite durumu ve zaman bilgisi.
 
-## Eksikler ve Hatalar
+### Configuration.proto
+- **Configuration:** Hata tolerans seviyesi ve işlem türü.
+- **MethodType Enum:** `STRT`, `STOP`.
 
-### Plotter.py
-- Python tabanlı sunucu olan Plotter, Admin istemcisinden kapasite bilgilerini alarak grafik oluşturur. Ancak, yanıt iletimiyle ilgili sorunlar nedeniyle entegrasyonu tamamlanmamıştır.
+---
 
+## Mimari
+<img src="Mimariler/yeni_mimari.png.png" alt="" width="400"/>
+
+---
+
+
+**Başlatma Adımları:**
+1. Sunucuları başlatın.
+2. Admin panelini çalıştırın.
+3. İstemciler üzerinden işlem gerçekleştirin.
+
+---
+
+**Ekip Üyeleri:**
+1. Aykhan Shirinzade
+2. Beyzanur Dere
+3. Pınar Güzel
+4. Elgun Heydarov
+
+---
+
+## Sunum Videosu
