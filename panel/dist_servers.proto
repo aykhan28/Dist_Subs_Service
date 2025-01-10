@@ -1,8 +1,0 @@
-syntax = "proto3";
-
-package dist_servers;
-
-message Capacity {
-    int32 subscriber_count = 1;
-    int32 server_port= 2;
-}
